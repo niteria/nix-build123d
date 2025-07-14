@@ -22,6 +22,13 @@ python object.py
 ```
 It will log the url to open with the browser.
 
+## Adding dependencies
+
+Example:
+```
+uv add git+https://github.com/baverman/build123d_draft
+```
+
 # Acknowledgements
 
 Based on https://github.com/clementpoiret/nix-python-devenv

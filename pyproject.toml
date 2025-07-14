@@ -4,4 +4,13 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ['build123d', 'yacv-server']
+dependencies = [
+    "bd-warehouse",
+    'build123d',
+    "build123d-draft",
+    'yacv-server',
+]
+
+[tool.uv.sources]
+build123d-draft = { git = "https://github.com/baverman/build123d_draft" }
+bd-warehouse = { git = "https://github.com/gumyr/bd_warehouse.git" }
