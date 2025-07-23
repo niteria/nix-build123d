@@ -22,6 +22,12 @@ python object.py
 ```
 It will log the url to open with the browser.
 
+## Remote access
+
+```
+export YACV_HOST=0.0.0.0
+```
+
 # Acknowledgements
 
 Based on https://github.com/clementpoiret/nix-python-devenv
