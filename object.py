@@ -5,7 +5,7 @@ from build123d import *  # pyright:ignore
 from build123d_draft import *
 
 import build123d
-
+import util
 logging.basicConfig(level=logging.DEBUG)
 
 from yacv_server import show
@@ -67,6 +67,6 @@ def test_lstop_simple():
 
 example = outer - inner - hole
 show(test_lstop_simple(), example)
-# build123d.export_stl(example, "/home/niteria/tmp/p.stl")
+# build123d.export_stl(example, f"/home/niteria/tmp/p_{util.params()}.stl")
 
 # %%
