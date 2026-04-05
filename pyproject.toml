@@ -6,5 +6,12 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     'build123d>=0.10.0',
+    "cadquery-ocp-novtk>=7.9.3.1",
     'yacv-server==0.10.12',
 ]
+
+[tool.setuptools]
+# Tell setuptools exactly what to include (fixes the "multiple top-level modules" error)
+# packages = ["util"]   # ← change "util" to whatever your actual package name is
+# or if you only have scripts:
+py-modules = ["util"]

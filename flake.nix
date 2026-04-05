@@ -4,6 +4,21 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+
+    pyproject-nix = {
+      url = "github:pyproject-nix/pyproject.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    uv2nix = {
+      url = "github:pyproject-nix/uv2nix";
+      inputs.pyproject-nix.follows = "pyproject-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    pyproject-build-systems = {
+      url = "github:pyproject-nix/build-system-pkgs";
+      inputs.pyproject-nix.follows = "pyproject-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -11,18 +26,18 @@
       self,
       nixpkgs,
       flake-utils,
+      pyproject-nix,
+      uv2nix,
+      pyproject-build-systems,
+      ...
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = import nixpkgs {
-          inherit system;
-          # Allow unfree if needed for any CAD-related packages in the future
-          # config.allowUnfree = true;
-        };
+        pkgs = nixpkgs.legacyPackages.${system};
 
-        # Same build inputs as your devenv.nix
-        buildInputs = with pkgs; [
+        # Native libs — NO VTK needed anymore
+        nativeLibs = with pkgs; [
           stdenv.cc.cc
           libuv
           zlib
@@ -32,55 +47,65 @@
           expat
         ];
 
-        # Python 3.12+ as required by pyproject.toml
         python = pkgs.python312;
+
+        workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./.; };
+
+        pythonBase = pkgs.callPackage pyproject-nix.build.packages { inherit python; };
+
+        pyprojectOverlay = workspace.mkPyprojectOverlay {
+          sourcePreference = "wheel";
+        };
+
+        # === THE FIX: alias the old name to the no-VTK package ===
+        ocpOverlay = final: prev: {
+          cadquery-ocp = final.cadquery-ocp-novtk;
+          ocp = final.cadquery-ocp-novtk; # some transitive imports still use "ocp"
+        };
+
+        pythonSet = pythonBase.overrideScope (
+          pkgs.lib.composeManyExtensions [
+            pyproject-build-systems.overlays.wheel
+            pyprojectOverlay
+            ocpOverlay
+          ]
+        );
+
+        editableOverlay = workspace.mkEditablePyprojectOverlay {
+          root = "$REPO_ROOT";
+        };
+
+        editablePythonSet = pythonSet.overrideScope editableOverlay;
+
+        virtualenv = editablePythonSet.mkVirtualEnv "cad-dev-env" workspace.deps.all;
       in
       {
         devShells.default = pkgs.mkShell {
           name = "cad-dev";
 
-          buildInputs = buildInputs ++ [
-            python
-            pkgs.uv # UV package manager (replaces pip + venv management)
+          packages = nativeLibs ++ [
+            virtualenv
+            pkgs.uv
           ];
 
-          # Same LD_LIBRARY_PATH as your devenv setup (critical for build123d's native extensions)
-          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildInputs;
+          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath nativeLibs;
 
-          # Automatic setup on `nix develop` (mirrors your devenv + uv.sync + enterShell)
+          env = {
+            UV_NO_SYNC = "1";
+            UV_PYTHON_DOWNLOADS = "never";
+          };
+
           shellHook = ''
-            echo "🚀 Entering CAD development shell (build123d + yacv-server)"
+            echo "🚀 Entering CAD development shell (build123d + yacv-server via uv2nix + novtk)"
+            export REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
+            unset PYTHONPATH
 
-            # Tell UV to use the exact Python version from Nix
-            export UV_PYTHON=${python}/bin/python
-            export UV_PYTHON_PREFERENCE=only-managed
-
-            # Create/sync the virtual environment exactly like `uv sync` + devenv does
-            if [ ! -d .venv ]; then
-              echo "Creating UV virtual environment and syncing dependencies..."
-              uv sync --frozen
-            else
-              echo "Syncing UV virtual environment (use 'uv sync' manually if you change pyproject.toml)..."
-              uv sync --frozen --no-install-project
-            fi
-
-            # Activate the venv (exactly like your enterShell)
-            source .venv/bin/activate
-
-            # Optional: make sure the test import works immediately
-            if command -v python >/dev/null; then
-              if python -c "import build123d" 2>/dev/null; then
-                echo "✅ build123d is importable"
-              else
-                echo "⚠️  build123d import failed – run 'uv sync' manually"
-              fi
-            fi
-
+            echo "✅ Pure Nix environment ready (using cadquery-ocp-novtk – no VTK)"
             echo ""
-            echo "Commands available:"
-            echo "  python object.py          # run your model + YACV server"
-            echo "  uv sync                   # update venv after changing dependencies"
-            echo "  uv run python -c 'import build123d'"  # test import
+            echo "Commands:"
+            echo "  python object.py                  # run your model + YACV server"
+            echo "  uv add <pkg> && nix develop       # after changing pyproject.toml"
+            echo "  uv run python -c 'import build123d; print(\"✅ OK\")'"
             echo ""
             echo "YACV remote access: export YACV_HOST=0.0.0.0"
           '';
