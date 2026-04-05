@@ -1,0 +1,13 @@
+[project]
+name = "my-extension"
+version = "0.1.0"
+description = "My CAD extension"
+requires-python = ">=3.12"
+dependencies = [
+    # Add your dependencies here, e.g.:
+    # "numpy",
+    # "watchdog",
+]
+
+[tool.setuptools]
+py-modules = []

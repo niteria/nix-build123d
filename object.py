@@ -27,5 +27,3 @@ example = offset(ex29, -b, openings=necktopf)
 
 show( example)
 # build123d.export_stl(example, f"/home/niteria/tmp/p_{util.params()}.stl")
-
-# %%

@@ -1,5 +1,5 @@
 {
-  description = "CAD development environment for build123d + yacv-server";
+  description = "CAD development environment for build123d + yacv-server (reusable)";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -31,12 +31,22 @@
       pyproject-build-systems,
       ...
     }:
-    flake-utils.lib.eachDefaultSystem (
+    let
+      perSystem = flake-utils.lib.eachDefaultSystem;
+    in
+    {
+      templates = {
+        extend = {
+          path = ./templates/extend;
+          description = "Template for extending the CAD base";
+        };
+      };
+    }
+    // perSystem (
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        # Native libs — NO VTK needed anymore
         nativeLibs = with pkgs; [
           stdenv.cc.cc
           libuv
@@ -57,10 +67,9 @@
           sourcePreference = "wheel";
         };
 
-        # === THE FIX: alias the old name to the no-VTK package ===
         ocpOverlay = final: prev: {
           cadquery-ocp = final.cadquery-ocp-novtk;
-          ocp = final.cadquery-ocp-novtk; # some transitive imports still use "ocp"
+          ocp = final.cadquery-ocp-novtk;
         };
 
         pythonSet = pythonBase.overrideScope (
@@ -71,19 +80,25 @@
           ]
         );
 
+        # Separate overlays for different use cases
         editableOverlay = workspace.mkEditablePyprojectOverlay {
           root = "$REPO_ROOT";
         };
 
+        # Python set WITH editable - for local devshell
         editablePythonSet = pythonSet.overrideScope editableOverlay;
 
-        virtualenv = editablePythonSet.mkVirtualEnv "cad-dev-env" workspace.deps.all;
+        # Use workspace.deps.default directly - should now include both base + watchdog-extension
+        workspaceDeps = workspace.deps.default;
+
+        # Create virtualenv with all workspace deps (no more overrideAttrs hack!)
+        virtualenv = editablePythonSet.mkVirtualEnv "cad-dev-env" workspaceDeps;
       in
       {
         devShells.default = pkgs.mkShell {
           name = "cad-dev";
 
-          packages = nativeLibs ++ [
+          packages = [
             virtualenv
             pkgs.uv
           ];
@@ -96,19 +111,78 @@
           };
 
           shellHook = ''
-            echo "🚀 Entering CAD development shell (build123d + yacv-server via uv2nix + novtk)"
             export REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
             unset PYTHONPATH
 
-            echo "✅ Pure Nix environment ready (using cadquery-ocp-novtk – no VTK)"
+            echo "🚀 Entering CAD development shell"
             echo ""
-            echo "Commands:"
-            echo "  python object.py                  # run your model + YACV server"
-            echo "  uv add <pkg> && nix develop       # after changing pyproject.toml"
-            echo "  uv run python -c 'import build123d; print(\"✅ OK\")'"
-            echo ""
-            echo "YACV remote access: export YACV_HOST=0.0.0.0"
           '';
+        };
+
+        packages = {
+          cadPythonEnv = virtualenv;
+          cadPythonSet = editablePythonSet;
+          cadPythonSetNoEditable = pythonSet;
+          cadWorkspace = workspace;
+          cadPyprojectOverlay = pyprojectOverlay;
+          cadEditableOverlay = editableOverlay;
+          nativeLibs = nativeLibs;
+          pyproject-build-systems = pyproject-build-systems;
+          uv2nix = uv2nix;
+          pyproject-nix = pyproject-nix;
+
+          # Helper for extending repos
+          mkCadDevShell =
+            {
+              extraWorkspaces ? null,
+            }:
+            let
+              extWorkspace =
+                if extraWorkspaces != null then
+                  uv2nix.lib.workspace.loadWorkspace { workspaceRoot = extraWorkspaces; }
+                else
+                  null;
+              extOverlay =
+                if extWorkspace != null then
+                  extWorkspace.mkPyprojectOverlay { sourcePreference = "wheel"; }
+                else
+                  null;
+              extEditableOverlay =
+                if extWorkspace != null then
+                  extWorkspace.mkEditablePyprojectOverlay { root = "$REPO_ROOT"; }
+                else
+                  null;
+              extSet =
+                if extOverlay != null then
+                  pythonSet.overrideScope (
+                    pkgs.lib.composeManyExtensions [
+                      pyproject-build-systems.overlays.wheel
+                      extOverlay
+                      extEditableOverlay
+                    ]
+                  )
+                else
+                  pythonSet;
+              extDeps = if extWorkspace != null then extWorkspace.deps.default else { };
+              combinedDeps = workspace.deps.default // extDeps;
+            in
+            pkgs.mkShell {
+              name = "cad-dev";
+              packages = [
+                (extSet.mkVirtualEnv "cad-dev" combinedDeps)
+                pkgs.uv
+              ];
+              LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath nativeLibs;
+              env = {
+                UV_NO_SYNC = "1";
+                UV_PYTHON_DOWNLOADS = "never";
+              };
+              shellHook = ''
+                export REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
+                unset PYTHONPATH
+                echo "🚀 CAD dev shell"
+              '';
+            };
         };
       }
     );
