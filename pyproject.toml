@@ -5,10 +5,6 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    'build123d>=0.9.1',
-    "build123d-draft",
-    'yacv-server',
+    'build123d>=0.10.0',
+    'yacv-server==0.10.12',
 ]
-
-[tool.uv.sources]
-build123d-draft = { git = "https://github.com/niteria/build123d_draft.git" }
