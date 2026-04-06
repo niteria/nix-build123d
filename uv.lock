@@ -59,7 +59,7 @@ dependencies = [
 requires-dist = [
     { name = "build123d", specifier = ">=0.10.0" },
     { name = "cadquery-ocp-novtk", specifier = ">=7.9.3.1" },
-    { name = "yacv-server", specifier = "==0.10.12" },
+    { name = "yacv-server", url = "https://github.com/niteria/yet-another-cad-viewer/releases/download/v0.10.14-wheelfix1/yacv_server-0.10.14-py3-none-any.whl" },
 ]
 
 [[package]]
@@ -737,15 +737,6 @@ wheels = [
 ]
 
 [[package]]
-name = "poetry-core"
-version = "2.3.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/39/46/7cc89b6ef47803528673585bfa40fa729a7050d9eaedeb7e7f5816300c88/poetry_core-2.3.1.tar.gz", hash = "sha256:96f791d5d7d4e040f3983d76779425cf9532690e2756a24fd5ca0f86af19ef82", size = 381093, upload-time = "2026-02-01T13:54:32.458Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/01/10/c9f7ca739ab0956f8dc8737e6318b9812745589ed1e3f6fdfb6a5d64f58a/poetry_core-2.3.1-py3-none-any.whl", hash = "sha256:db1cf63b782570deb38bfba61e2304a553eef0740dc17959a50cc0f5115ee634", size = 340949, upload-time = "2026-02-01T13:54:30.416Z" },
-]
-
-[[package]]
 name = "prompt-toolkit"
 version = "3.0.52"
 source = { registry = "https://pypi.org/simple" }
@@ -1084,14 +1075,20 @@ wheels = [
 
 [[package]]
 name = "yacv-server"
-version = "0.10.12"
-source = { registry = "https://pypi.org/simple" }
+version = "0.10.14"
+source = { url = "https://github.com/niteria/yet-another-cad-viewer/releases/download/v0.10.14-wheelfix1/yacv_server-0.10.14-py3-none-any.whl" }
 dependencies = [
     { name = "build123d" },
     { name = "pillow" },
-    { name = "poetry-core" },
     { name = "pygltflib" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/70/07/4ea102bfb17360992591f15a4812d5fe4eb04da191d57311530dd7dffb1b/yacv_server-0.10.12-py3-none-any.whl", hash = "sha256:a216e6b342a18f4c67f111f6c80033208657077c95b2af1b6c4da3f98db33815", size = 3233101, upload-time = "2026-03-22T17:27:55.289Z" },
+    { url = "https://github.com/niteria/yet-another-cad-viewer/releases/download/v0.10.14-wheelfix1/yacv_server-0.10.14-py3-none-any.whl", hash = "sha256:a28e4e22e2686a4da44b8692e1cffeaf48d81e8a4e0f7a8ed5615e371889a76c" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "build123d", specifier = ">=0.10,<0.11" },
+    { name = "pillow", specifier = ">=12,<12.3" },
+    { name = "pygltflib", specifier = ">=1.16.2" },
 ]
