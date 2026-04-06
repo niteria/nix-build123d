@@ -7,11 +7,8 @@ requires-python = ">=3.12"
 dependencies = [
     'build123d>=0.10.0',
     "cadquery-ocp-novtk>=7.9.3.1",
-    "yacv-server",
+    "yacv-server==0.10.15",
 ]
 
 [tool.setuptools]
 py-modules = []
-
-[tool.uv.sources]
-yacv-server = { url = "https://github.com/niteria/yet-another-cad-viewer/releases/download/v0.10.14-wheelfix1/yacv_server-0.10.14-py3-none-any.whl" }
