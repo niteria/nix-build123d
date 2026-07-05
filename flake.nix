@@ -181,6 +181,11 @@
                 export REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
                 unset PYTHONPATH
                 echo "🚀 CAD dev shell"
+
+                if [ -d .venv ]; then
+                  printf '%s\n' 'warning: .venv exists; coc-pyright will prefer it over the CAD devshell Python.'
+                  printf '%s\n' '         Remove .venv or configure Coc/Pyright to use the devshell Python.'
+                fi
               '';
             };
         };
